@@ -1,5 +1,4 @@
 import { Routes, Route } from 'react-router-dom'
-import Navbar from '../components/navbar'
 import Stock from '../components/Vendor/Stock'
 import Orders from '../components/Vendor/Orders'
 import Notifications from '../components/Vendor/Notifications'
@@ -9,8 +8,6 @@ import Layout from '../pages/LayoutVendor'
 const vendorRoutes = () => {
   return (
     <div>
-      {/* <Navbar name={'Sunil Perera'} /> */}
-
       <Routes>
         <Route path="/vendor" element={<Layout />}>
           <Route path="/vendor/stock" element={<Stock />} />

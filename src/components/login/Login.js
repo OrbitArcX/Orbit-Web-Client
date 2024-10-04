@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import loginImg from '../assets/login.jpg'
+import loginImg from '../../assets/login.jpg'
 import { useNavigate } from 'react-router-dom'
-import useAuth from '../hooks/useAuth'
 
 export default function Login() {
   const navigate = useNavigate()
-  const { setAuth } = useAuth()
   const [user, setUser] = useState('')
   const [pwd, setPwd] = useState('')
   const [errMsg, setErrMsg] = useState('')
+
+  const API_URL = process.env.REACT_APP_API_URL
 
   useEffect(() => {
     setErrMsg('')
@@ -20,22 +20,35 @@ export default function Login() {
 
     try {
       const response = await axios.post(
-        'http://localhost:3001/api/v1/auth/login',
-        JSON.stringify({ user, pwd }),
+        `${API_URL}/api/user/login`,
+        {
+          username: user,
+          password: pwd,
+        },
         {
           headers: { 'Content-Type': 'application/json' },
-          withCredentials: true,
         }
       )
-      console.log(JSON.stringify(response?.data))
 
-      const accessToken = response?.data?.accessToken
-      const role = response?.data?.role
-      console.log(role)
-      setAuth({ user, pwd, role, accessToken })
+      const { id, role } = response?.data
+      console.log(id) // Capture user id from response
+      console.log(role) // Capture user role
+
+      // Store the user ID in local storage based on the role
+      if (role === 'Vendor') {
+        localStorage.setItem('vendorid', id)
+        navigate('/vendor/notifications')
+      } else if (role === 'Admin') {
+        localStorage.setItem('adminid', id)
+        navigate('/admin')
+      } else if (role === 'CSR') {
+        localStorage.setItem('csrid', id)
+        navigate('/csr/order')
+      }
+
+      // Clear form fields after login
       setUser('')
       setPwd('')
-      navigate('/admin')
     } catch (err) {
       if (!err?.response) {
         setErrMsg('Server Error')
@@ -72,13 +85,13 @@ export default function Login() {
               Welcome To OrbitArcX
             </h3>
 
-            {/* Username Input */}
+            {/* Email Input */}
             <div className="form-group mb-3">
-              <label className="text-white">Username</label>
+              <label className="text-white">Email</label>
               <input
-                type="text"
+                type="email"
                 className="form-control bg-secondary text-white"
-                id="username"
+                id="user"
                 autoComplete="off"
                 onChange={(e) => setUser(e.target.value)}
                 value={user}

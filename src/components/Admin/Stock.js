@@ -7,35 +7,46 @@ import 'bootstrap/dist/css/bootstrap.min.css'
 const Stock = () => {
   const [data, setData] = useState([])
   const [categories, setCategories] = useState([])
+  const [vendors, setVendors] = useState([])
   const [lowStockCount, setLowStockCount] = useState(0)
   const [totalStockValue, setTotalStockValue] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
   const [rowsPerPage] = useState(5)
   const [selectedProduct, setSelectedProduct] = useState(null)
-  const [showModal, setShowModal] = useState(false) // For action modal (Update/Delete)
-  const [showUpdateModal, setShowUpdateModal] = useState(false) // For update form modal
+  // modal (Update/Delete)---------------------------------------------------------------
+  const [showModal, setShowModal] = useState(false)
+  const [showUpdateModal, setShowUpdateModal] = useState(false)
   const [showConfirmation, setShowConfirmation] = useState(false)
   const [showAddProduct, setShowAddProduct] = useState(false)
-  const [pendingAction, setPendingAction] = useState(null) // Store action type (Update/Delete)
+
+  // store action type (Update/Delete)---------------------------------------------------
+  const [pendingAction, setPendingAction] = useState(null)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [newProduct, setNewProduct] = useState({
     name: '',
     description: '',
+    author: '',
     price: '',
     stock: '',
     categoryId: '',
-    vendorId: '66fabea22165a016474e7a6e', // Hardcoded vendor ID
+    vendorId: '',
   })
-  const [imageFile, setImageFile] = useState(null) // For storing the image file
 
+  // for storing the image file---------------------------------------
+  const [imageFile, setImageFile] = useState(null)
+
+  // API endpoint------------------------------------------------------------
   const API_URL = process.env.REACT_APP_API_URL
 
-  // Fetch products and categories from API on component mount
+  // fetch products and categories from API on component mount----------------------------------------------------
   useEffect(() => {
     getProducts()
     getCategories()
+    getVendors()
   }, [])
 
+  // retriew all products----------------------------------------------------------
   const getProducts = async () => {
     try {
       const response = await axios.get(`${API_URL}/api/products`)
@@ -47,6 +58,17 @@ const Stock = () => {
     }
   }
 
+  // Fetch all vendors
+  const getVendors = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/user/role/Vendor`)
+      setVendors(response.data)
+    } catch (error) {
+      console.error('Error fetching vendors:', error)
+    }
+  }
+
+  // retriew all categories----------------------------------------------------------
   const getCategories = async () => {
     try {
       const response = await axios.get(`${API_URL}/api/products/category`)
@@ -56,11 +78,13 @@ const Stock = () => {
     }
   }
 
+  // fuction to calulate the low stock-------------------------------------------------
   const calculateLowStockCount = (products) => {
     const count = products.filter((product) => product.stock < 10).length
     setLowStockCount(count)
   }
 
+  // calculate total stock worth---------------------------------------------------------
   const calculateTotalStockValue = (products) => {
     const totalValue = products.reduce(
       (acc, product) => acc + product.stock * product.price,
@@ -69,35 +93,37 @@ const Stock = () => {
     setTotalStockValue(totalValue)
   }
 
-  // Handle form input changes for new and update forms
+  // handle form input changes for new and update forms---------------------------------------
   const handleInputChange = (e) => {
     const { name, value } = e.target
     setNewProduct((prev) => ({ ...prev, [name]: value }))
   }
 
-  // Handle form input changes for updating products
+  // handle form input changes for updating products----------------------------------------------------------------
   const handleUpdateInputChange = (e) => {
     const { name, value } = e.target
     setSelectedProduct((prev) => ({ ...prev, [name]: value }))
   }
 
-  // Handle image file selection
+  // handle image file selection----------------------------------------------------------------
   const handleImageChange = (e) => {
-    setImageFile(e.target.files[0]) // Store the selected file in state
+    setImageFile(e.target.files[0])
   }
 
-  // Create a new product
+  // create a new product----------------------------------------------------------------
   const createProduct = async (e) => {
     e.preventDefault()
 
     const formData = new FormData()
     formData.append('name', newProduct.name)
     formData.append('description', newProduct.description)
+    formData.append('author', newProduct.author)
     formData.append('price', newProduct.price)
     formData.append('stock', newProduct.stock)
     formData.append('categoryId', newProduct.categoryId)
     formData.append('vendorId', newProduct.vendorId)
-    formData.append('imageFile', imageFile) // Append the selected image file
+    // append the selected image file------------------------------------------
+    formData.append('imageFile', imageFile)
 
     try {
       await axios.post(`${API_URL}/api/products`, formData, {
@@ -105,27 +131,29 @@ const Stock = () => {
           'Content-Type': 'multipart/form-data',
         },
       })
-      getProducts() // Refresh product list after creation
+      // refresh product list after creation------------------------------------------
+      getProducts()
       setShowAddProduct(false)
-      alert('Product added successfully!')
+      setShowSuccessModal(true)
     } catch (error) {
       console.error('Error creating product:', error)
     }
   }
 
-  // Update a product (with or without updating the image)
+  // update a product -----------------------------------------
   const handleUpdate = async (e) => {
     e.preventDefault()
 
     const formData = new FormData()
     formData.append('name', selectedProduct.name)
     formData.append('description', selectedProduct.description)
+    formData.append('author', selectedProduct.author)
     formData.append('price', selectedProduct.price)
     formData.append('stock', selectedProduct.stock)
     formData.append('categoryId', selectedProduct.category.id)
     formData.append('vendorId', selectedProduct.vendor.id)
 
-    // If a new image is selected, append it to the form data
+    // if a new image is selected, append it to the form data----------------------------------------------------------------
     if (imageFile) {
       formData.append('imageFile', imageFile)
     }
@@ -140,20 +168,20 @@ const Stock = () => {
           },
         }
       )
-      getProducts() // Refresh product list after update
-      setShowUpdateModal(false) // Close the update modal
-      setShowModal(false) // Close the action modal
-      alert('Product updated successfully!')
+      getProducts()
+      setShowUpdateModal(false)
+      setShowModal(false)
+      setShowSuccessModal(true)
     } catch (error) {
       console.error('Error updating product:', error)
     }
   }
 
-  // Delete a product
+  // delete a product-----------------------------------------------------------
   const handleDelete = async () => {
     try {
       await axios.delete(`${API_URL}/api/products/${selectedProduct.id}`)
-      getProducts() // Refresh product list after deletion
+      getProducts()
       setShowModal(false)
       setShowConfirmation(false)
     } catch (error) {
@@ -161,19 +189,18 @@ const Stock = () => {
     }
   }
 
-  // Open action modal and set selected product
   const handleActionClick = (product) => {
     setSelectedProduct(product)
-    setShowModal(true) // Show action modal
+    setShowModal(true)
   }
 
-  // Open update modal after selecting update action
+  // open update modal after selecting update action----------------------------------------------------------------
   const handleUpdateAction = () => {
-    setShowModal(false) // Close action modal
-    setShowUpdateModal(true) // Open update form modal
+    setShowModal(false)
+    setShowUpdateModal(true)
   }
 
-  // Pagination calculation
+  // pagination calculation----------------------------------------------------------------
   const indexOfLastRow = currentPage * rowsPerPage
   const indexOfFirstRow = indexOfLastRow - rowsPerPage
   const currentRows = data
@@ -184,12 +211,21 @@ const Stock = () => {
     const doc = new jsPDF()
     doc.autoTable({
       head: [
-        ['Product Name', 'Stock', 'Description', 'Price', 'Category', 'Vendor'],
+        [
+          'Product Name',
+          'Stock',
+          'Description',
+          'Author',
+          'Price',
+          'Category',
+          'Vendor',
+        ],
       ],
       body: data.map((product) => [
         product.name,
         product.stock,
         product.description,
+        product.author,
         `Rs.${product.price.toFixed(2)}`,
         product.category.name,
         product.vendor.name,
@@ -200,20 +236,20 @@ const Stock = () => {
 
   const getRowColor = (stock) => {
     if (stock < 5) {
-      return 'bg-danger text-white' // Red for stock < 5
+      // red for stock < 5-------------------------------------
+      return 'bg-danger text-white'
     } else if (stock >= 5 && stock < 10) {
-      return 'bg-warning text-dark' // Yellow for stock between 5 and 10
+      // yellow for stock between 5 and 10-----------------------------------
+      return 'bg-warning text-dark'
     } else {
-      return '' // No specific class for stock >= 10 (default color)
+      // stock >= 10 - default color------------------------------------
+      return ''
     }
   }
 
   const actionButtons = () => (
     <div className="d-flex justify-content-around">
-      <button
-        className="btn btn-primary"
-        onClick={handleUpdateAction} // Open update modal
-      >
+      <button className="btn btn-primary" onClick={handleUpdateAction}>
         Update
       </button>
       <button
@@ -236,7 +272,7 @@ const Stock = () => {
             Are you sure you want to delete this product?
           </p>
           <button className="btn btn-danger me-2" onClick={handleDelete}>
-            Yes, Delete
+            Yes, Delete.
           </button>
           <button
             className="btn btn-secondary"
@@ -251,7 +287,7 @@ const Stock = () => {
 
   return (
     <div className="container" style={{ backgroundColor: '#fff' }}>
-      {/* Summary Cards */}
+      {/* -------------------------------------------------summary Cards-------------------------------------------------------- */}
       <div className="row mb-4">
         <div className="col-md-3">
           <div className="card text-center">
@@ -287,7 +323,6 @@ const Stock = () => {
         </div>
       </div>
 
-      {/* Search Input and Buttons */}
       <div className="row mb-3">
         <div className="col-md-8">
           <input
@@ -302,6 +337,7 @@ const Stock = () => {
           <button
             onClick={() => setShowAddProduct(true)}
             className="btn btn-success me-2"
+            style={{ backgroundColor: '#6362b5', borderColor: '#6362b5' }}
           >
             Add Product
           </button>
@@ -311,7 +347,7 @@ const Stock = () => {
         </div>
       </div>
 
-      {/* Data Table */}
+      {/* --------------------------------------------data table------------------------------------------- */}
       <div className="table-responsive">
         <table className="table table-bordered">
           <thead>
@@ -321,6 +357,7 @@ const Stock = () => {
               <th>Product Name</th>
               <th>Stock</th>
               <th>Description</th>
+              <th>Author</th>
               <th>Price</th>
               <th>Category Name</th>
               <th>Vendor Name</th>
@@ -343,6 +380,7 @@ const Stock = () => {
                 <td>{product.name}</td>
                 <td>{product.stock}</td>
                 <td>{product.description}</td>
+                <td>{product.author}</td>
                 <td>Rs.{product.price}.00</td>
                 <td>{product.category.name}</td>
                 <td>{product.vendor.name}</td>
@@ -358,7 +396,12 @@ const Stock = () => {
                 <td>
                   <button
                     className="btn btn-primary"
-                    onClick={() => handleActionClick(product)} // Open action modal
+                    onClick={() => handleActionClick(product)}
+                    size="sm"
+                    style={{
+                      backgroundColor: '#6362b5',
+                      borderColor: '#6362b5',
+                    }}
                   >
                     Action
                   </button>
@@ -369,7 +412,7 @@ const Stock = () => {
         </table>
       </div>
 
-      {/* Pagination */}
+      {/* -----------------------------------------------------pagination------------------------------------------------------ */}
       <div className="d-flex justify-content-between mt-4">
         <button
           onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
@@ -394,7 +437,7 @@ const Stock = () => {
         </button>
       </div>
 
-      {/* Action Modal */}
+      {/* -------------------------------------------------------------modal------------------------------------------------------------- */}
       {showModal && selectedProduct && (
         <div className="modal show fade d-block" tabIndex="-1">
           <div className="modal-dialog">
@@ -417,7 +460,7 @@ const Stock = () => {
         </div>
       )}
 
-      {/* Add Product Modal */}
+      {/* ----------------------------------------------------------add product modal-------------------------------------------- */}
       {showAddProduct && (
         <div className="modal show fade d-block" tabIndex="-1">
           <div className="modal-dialog">
@@ -451,6 +494,18 @@ const Stock = () => {
                       name="description"
                       placeholder="Enter product description"
                       value={newProduct.description}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Author</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      name="author"
+                      placeholder="Enter Author"
+                      value={newProduct.author}
                       onChange={handleInputChange}
                       required
                     />
@@ -498,12 +553,32 @@ const Stock = () => {
                   </div>
 
                   <div className="mb-3">
+                    <label className="form-label">Vendor</label>
+                    <select
+                      className="form-control"
+                      name="vendorId"
+                      value={newProduct.vendorId}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="">Select Vendor</option>
+                      {vendors.map((vendor) => (
+                        <option key={vendor.id} value={vendor.id}>
+                          {vendor.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="mb-3">
                     <label className="form-label">Upload Image</label>
+
                     <input
                       type="file"
                       className="form-control"
                       accept="image/*"
-                      onChange={handleImageChange} // Handle image selection
+                      // handle image selection------------------------------
+                      onChange={handleImageChange}
                       required
                     />
                   </div>
@@ -527,7 +602,37 @@ const Stock = () => {
         </div>
       )}
 
-      {/* Update Product Modal */}
+      {/* ---------------------------------------------------------success modal-------------------------------------------------- */}
+      {showSuccessModal && (
+        <div className="modal show fade d-block" tabIndex="-1">
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Success</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowSuccessModal(false)}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <p>Product added successfully!</p>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => setShowSuccessModal(false)}
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ----------------------------------------------------update product modal---------------------------------------------------- */}
       {showUpdateModal && selectedProduct && (
         <div className="modal show fade d-block" tabIndex="-1">
           <div className="modal-dialog">
@@ -542,7 +647,7 @@ const Stock = () => {
               </div>
               <div className="modal-body">
                 <form onSubmit={handleUpdate}>
-                  {/* Update Product Form */}
+                  {/* ---------------------------------------------------------update product form---------------------------------------------------------- */}
                   <div className="mb-3">
                     <label className="form-label">Product Name</label>
                     <input
@@ -560,6 +665,17 @@ const Stock = () => {
                       className="form-control"
                       name="description"
                       value={selectedProduct.description}
+                      onChange={handleUpdateInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Author</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      name="author"
+                      value={selectedProduct.author}
                       onChange={handleUpdateInputChange}
                       required
                     />
@@ -610,7 +726,7 @@ const Stock = () => {
                       type="file"
                       className="form-control"
                       accept="image/*"
-                      onChange={handleImageChange} // Handle new image selection if necessary
+                      onChange={handleImageChange}
                     />
                   </div>
 
